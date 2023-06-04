@@ -60,6 +60,19 @@ macro(set_inc_options)
   endforeach()
 endmacro()
 
+if(TARGET llvm-link)
+  set(LLVM_LINK_EXE $<TARGET_FILE:llvm-link>)
+else()
+  find_program(LLVM_LINK_EXE llvm-link
+    HINTS ${LLVM_TOOLS_BINARY_DIR})
+endif()
+if(TARGET opt)
+  set(OPT_EXE $<TARGET_FILE:opt>)
+else()
+  find_program(OPT_EXE opt
+    HINTS ${LLVM_TOOLS_BINARY_DIR})
+endif()
+
 # called with NAME: library name
 #             SOURCES: .cl and .ll source files
 #             INTERNAL_LINK_LIBS: Extra .lls to be linked and internalized into final library
@@ -131,12 +144,12 @@ macro(opencl_bc_lib)
 
   add_custom_command(OUTPUT ${OUTPUT_BC_LIB}
     # Link regular library dependencies
-    COMMAND $<TARGET_FILE:llvm-link>
+    COMMAND "${LLVM_LINK_EXE}"
       -o "${OUT_NAME}.link0${LIB_SUFFIX}" "@${OUT_NAME}_response"
     # Extra link step with internalize
-    COMMAND $<TARGET_FILE:llvm-link> -internalize -only-needed "${name}.link0${LIB_SUFFIX}"
+    COMMAND "${LLVM_LINK_EXE}" -internalize -only-needed "${name}.link0${LIB_SUFFIX}"
       -o "${OUT_NAME}${LIB_SUFFIX}" ${internal_link_libs}
-    COMMAND $<TARGET_FILE:opt> -passes=amdgpu-unify-metadata,strip
+    COMMAND "${OPT_EXE}" -passes=amdgpu-unify-metadata,strip
       -o "${OUT_NAME}${STRIP_SUFFIX}" "${OUT_NAME}${LIB_SUFFIX}"
     COMMAND "${PREPARE_BUILTINS}"
       -o ${OUTPUT_BC_LIB} "${OUT_NAME}${STRIP_SUFFIX}"
